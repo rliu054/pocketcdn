@@ -1,0 +1,7 @@
+language: go
+
+script: go build
+
+go:
+    - 1.6
+    - tip
