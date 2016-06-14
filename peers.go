@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/codeskyblue/groupcache"
+	"github.com/codeskyblue/groupcache/consistenthash"
 	"github.com/gorilla/websocket"
 )
 
@@ -18,7 +19,8 @@ var (
 		closed:         false,
 	}
 	peerGroup = PeerGroup{
-		m: make(map[string]Peer, 10),
+		m:    make(map[string]Peer, 10),
+		hash: consistenthash(3, nil),
 	}
 
 	pool *groupcache.HTTPPool
@@ -30,9 +32,11 @@ type Peer struct {
 	ActiveDownload int
 }
 
+// PeerGroup maintains information of members in the group
 type PeerGroup struct {
 	sync.RWMutex
 	peerMap map[string]Peer
+	hash    consistenthash.Map
 }
 
 func (pg *PeerGroup) AddPeer(name string, conn *websocket.Conn) {
@@ -42,14 +46,18 @@ func (pg *PeerGroup) AddPeer(name string, conn *websocket.Conn) {
 		Name:       name,
 		Connection: conn,
 	}
+	hash.Add(name)
 }
 
 func (pg *PeerGroup) RemovePeer(name string) {
 	pg.Lock()
 	delete(pg.peerMap, name)
+	hash.Remove(name)
 	pg.Unlock()
 }
 
+// Keys return keys of all peers
+// FIXME: we don't really need this
 func (pg *PeerGroup) Keys() []string {
 	pg.RLock()
 	defer pg.RUnlock()
@@ -60,20 +68,17 @@ func (pg *PeerGroup) Keys() []string {
 	return keys
 }
 
+// PickPeer picks a peer using consistent hashing algorithm,
+// when group members change, the load is shared between adjacent peers
 func (pg *PeerGroup) PickPeer() (string, error) {
-	//FIXME: this picking strategy is stupid, need a fix
-	// Hopefully there's a way to validate the peers
 	pg.RLock()
 	defer pg.RUnlock()
-	r := rand.Int()
-	keys := []string{}
-	for key, _ := range pg.peerMap {
-		keys = append(keys, key)
-	}
 	if len(keys) == 0 {
-		return "", errors.New("No peers to pick from")
+		return "", errors.New("There is no peer to choose from in this group")
 	}
-	return keys[r%len(keys)], nil
+
+	r := rand.Int()
+	return keys[r%len(pg.Keys())], nil
 }
 
 // BroadcastJSON sends a message to all peers in the group
@@ -113,7 +118,6 @@ func (s *ServerState) Close() error {
 	return nil
 }
 
-// FIXME: this is stupid, fix it
-func (s *ServerState) isClosed() bool {
+func (s *ServerState) IsClosed() bool {
 	return s.closed
 }

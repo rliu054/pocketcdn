@@ -25,7 +25,7 @@ func InitMaster() (err error) {
 	return nil
 }
 
-// WSHandler
+// WSHandler handles membership changes in the peer map
 func WSHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Upgrade http request
@@ -48,7 +48,6 @@ func WSHandler(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 
-		// msg format definition?
 		action, _ := msg["action"].(string)
 		switch action {
 		case "LOGIN":
@@ -104,9 +103,8 @@ func WSHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Peer: %s left the group", name)
 }
 
-// InitPeer initializes a peer
+// InitPeer initializes a groupcache peer node
 func InitPeer() (err error) {
-	//FIXME: where did upstream come from?
 	u, err := url.Parse(*upstream)
 	if err != nil {
 		return
@@ -123,7 +121,7 @@ func InitPeer() (err error) {
 		return
 	}
 
-	// where did address come from?
+	// logic for joining the group
 	_, port, _ := net.SplitHostPort(*address)
 	wsclient.WriteJSON(map[string]string{
 		"action": "LOGIN",
