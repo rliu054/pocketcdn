@@ -20,7 +20,7 @@ import (
 
 var (
 	// log        *log.Logger
-	pocketCDNs = groupcache.NewGroup("pocketCDN", 512<<20, groupcache.GetterFunc(
+	pocketCDNs = groupcache.NewGroup("PocketCDN", 512<<20, groupcache.GetterFunc(
 		func(ctx groupcache.Context, key string, dest groupcache.Sink) error {
 			filePath := key
 			bytes, err := download(filepath)
@@ -137,8 +137,8 @@ func FileHandler(w http.ResponseWriter, r *http.Request) {
 		"success":     err == nil,
 		"user_agent":  r.Header.Get("User-Agent"),
 	}
-	headerData := r.Header.Get("X-Pocketcdn-Data")
-	headerType := r.Header.Get("X-Pocketcdn-Type")
+	headerData := r.Header.Get("X-PocketCDN-Data")
+	headerType := r.Header.Get("X-PocketCDN-Type")
 	if headerType == "json" {
 		var data interface{}
 		err := json.Unmarshal([]byte(headerData), &data)
